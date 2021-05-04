@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: ibm-mq
+  name: ibm-mq-dev-pipeline
   annotations:
     app.openshift.io/runtime: mq
 spec:
@@ -143,3 +143,17 @@ spec:
           value: $(tasks.helm-release.results.helm-url)
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+    - name: promote-changes
+      taskRef:
+        name: ibm-update-image
+      runAfter:
+        - ibm-gitops
+      params:
+        - name: image-server
+          value: "$(tasks.setup.results.image-server)"
+        - name: image-namespace
+          value: "$(tasks.setup.results.image-namespace)"
+        - name: image-repository
+          value: "$(tasks.setup.results.image-repository)"
+        - name: image-tag
+          value: "$(tasks.setup.results.image-tag)"

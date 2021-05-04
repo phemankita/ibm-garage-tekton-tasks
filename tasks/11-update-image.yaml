@@ -1,0 +1,115 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-update-image
+  annotations:
+    description: Updates image info to the provided repo to trigger pipelines
+    app.openshift.io/description: Updates image info to the provided repo to trigger pipelines
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: source-dir
+      default: /source
+    - name: image-server
+      description: Image server info
+    - name: image-namespace
+      description: Image namespace
+    - name: image-repository
+      description: Image name including repository
+    - name: image-tag
+      description: Image tag
+      default: "latest"
+      type: string
+    - name: tools-image
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: update-image
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: git-repo
+              key: protocol
+              optional: true
+        - name: GIT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: git-repo
+              key: host
+              optional: true
+        - name: GIT_ORG
+          valueFrom:
+            configMapKeyRef:
+              name: git-repo
+              key: org
+              optional: true
+        - name: GIT_REPO
+          valueFrom:
+            configMapKeyRef:
+              name: git-repo
+              key: repo
+              optional: true
+        - name: GIT_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: git-repo
+              key: branch
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+
+          BRANCH_CMD=""
+          if [[ -n "${GIT_BRANCH}" ]]; then
+            BRANCH_CMD="-b ${GIT_BRANCH}"
+          fi
+
+          git config --global user.email "gitops@cloudnativetoolkit.dev"
+          git config --global user.name "Cloud Native Toolkit Pipeline"
+
+          echo "Cloning the corresponding repository"
+          # clone repo
+          GIT_URL="${PROTOCOL}://${GIT_USERNAME}:${GIT_PASSWORD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+          git clone ${BRANCH_CMD} ${GIT_URL} update_image
+          set -x
+          cd update_image
+          cd chart/base
+
+          echo $(params.imageUrl):$(params.imageTag)
+          # update value for key applicationImage
+          #sed -i '/image:/c\        image: "$(params.image-server)/$(params.image-namespace)/$(params.image-repository)"' ./values.yaml
+          sed -i '/newTag:/c\    newTag: "$(params.image-tag)"' ./values.yaml
+
+          # verify the value for key applicationImage got updated
+          cat ./values.yaml | grep "newTag"
+
+          # push changes to git
+          git add .
+          git commit -m "Cloudnative toolkit commit"
+          git remote rm origin
+          git remote add origin ${GIT_URL} > /dev/null 2>&1
+          git push origin ${BRANCH_CMD}
