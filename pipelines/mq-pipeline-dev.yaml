@@ -24,7 +24,7 @@ spec:
   tasks:
     - name: setup
       taskRef:
-        name: ibm-setup-v2-5-0
+        name: ibm-setup
       params:
         - name: git-url
           value: $(params.git-url)
@@ -82,7 +82,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: tag-release
       taskRef:
-        name: ibm-tag-release-v2-5-0
+        name: ibm-tag-release
       runAfter:
         - smoke-tests-mq
       params:
@@ -96,7 +96,7 @@ spec:
           value: "$(tasks.setup.results.js-image)"
     - name: img-release
       taskRef:
-        name: ibm-img-release-v2-5-0
+        name: ibm-img-release
       runAfter:
         - tag-release
       params:
@@ -106,7 +106,7 @@ spec:
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
     - name: img-scan
       taskRef:
-        name: ibm-img-scan-v2-5-0
+        name: ibm-img-scan
       runAfter:
         - img-release
       params:
@@ -118,7 +118,7 @@ spec:
           value: $(tasks.setup.results.scan-ibm)
     - name: helm-release
       taskRef:
-        name: ibm-helm-release-v2-5-0
+        name: ibm-helm-release
       runAfter:
         - img-scan
       params:
