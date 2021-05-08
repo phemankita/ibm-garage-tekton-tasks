@@ -15,12 +15,11 @@ spec:
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
     - name: environment
-      default: "dev"
+      description: environment
+      default: dev
     - name: app-type
-      default: "2-services/instances/"
-    - name: argoAppName
-      description: Name of the application deployed by argocd in dev namespace
-      default: "ibm-mq-dev-instance"
+      description: Service
+      default: 2-services/instances
   tasks:
     - name: setup
       taskRef:
