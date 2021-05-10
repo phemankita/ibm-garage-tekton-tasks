@@ -11,6 +11,11 @@ metadata:
     version: 0.0.0
 spec:
   params:
+    - name: git-url
+      description: The name of the git repository
+    - name: git-branch
+      description: The git revision (branch, tag, or sha) that should be built
+      default: master
     - name: source-dir
       default: /source
     - name: image-url
@@ -59,26 +64,28 @@ spec:
               name: git-repo
               key: org
               optional: true
-        - name: GIT_REPO
-          valueFrom:
-            configMapKeyRef:
-              name: git-repo
-              key: repo
-              optional: true
-        - name: GIT_BRANCH
-          valueFrom:
-            configMapKeyRef:
-              name: git-repo
-              key: branch
-              optional: true
+        # - name: GIT_REPO
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: git-repo
+        #       key: repo
+        #       optional: true
+        # - name: GIT_BRANCH
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: git-repo
+        #       key: branch
+        #       optional: true
       script: |
           #!/usr/bin/env bash
           set -ex
 
           BRANCH_CMD=""
-          if [[ -n "${GIT_BRANCH}" ]]; then
-            BRANCH_CMD="-b ${GIT_BRANCH}"
+          if [[ -n "$(params.git-branch)" ]]; then
+            BRANCH_CMD="-b $(params.git-branch)"
           fi
+
+          GIT_REPO=$(basename $(params.git-url) .git)
 
           git config --global user.email "gitops@cloudnativetoolkit.dev"
           git config --global user.name "Cloud Native Toolkit Pipeline"
@@ -110,14 +117,15 @@ spec:
             exit 0
           fi
 
+          git checkout -b cntk-ci-pipeline-${IMAGE_REPOSITORY}-${IMAGE_VERSION}
+
           # push changes to git
-          git add .
+          git add values.yaml
           git commit -m "Cloudnative toolkit commit"
           git remote rm origin
-          git remote add origin ${GIT_URL} > /dev/null 2>&1
-          # git push origin -u ${GIT_BRANCH}
 
+          git remote add origin ${GIT_URL} > /dev/null 2>&1
           git push origin cntk-ci-pipeline-${IMAGE_REPOSITORY}-${IMAGE_VERSION}
 
           GIT_PUSH_URL="${GIT_PROTOCOL}://api.github.com/repos/${GIT_ORG}/${GIT_REPO}/pulls"
-          curl -u ${GIT_USERNAME}:${GIT_PASSWORD} -d '{"title":"PR to promote to next environment","base":"'${GIT_BRANCH}'", "head":"'${GIT_ORG}':cntk-ci-pipeline-'${IMAGE_REPOSITORY}'-'${IMAGE_VERSION}'"}' ${GIT_PUSH_URL}
+          curl -u ${GIT_USERNAME}:${GIT_PASSWORD} -d '{"title":"PR to promote to next environment","base":"'$(params.git-branch)'", "head":"'${GIT_ORG}':cntk-ci-pipeline-'${IMAGE_REPOSITORY}'-'${IMAGE_VERSION}'"}' ${GIT_PUSH_URL}
