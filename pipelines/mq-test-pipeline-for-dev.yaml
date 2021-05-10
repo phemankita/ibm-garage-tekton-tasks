@@ -103,7 +103,7 @@ spec:
         - name: git-url
           value: "$(tasks.setup-queuemanager.results.git-url)"
         - name: git-branch
-          value: "$(params.qm-git-revision)"
+          value: "staging"
         - name: image-url
           value: "$(tasks.queuemanager-instance-tests.results.image-url)"
     # - name: promote-changes-to-app
