@@ -15,6 +15,12 @@ spec:
       default: ""
     - name: version
       default: ""
+    - name: environment
+      default: ""
+    - name: app-type
+      default: ""
+    - name: app-name
+      default: ""
     - name: source-dir
       default: /source
     - name: subdir
@@ -115,11 +121,11 @@ spec:
             SUBDIR="${APP_NAME}"
           fi
           if [[ -n "$(params.parentdir)" ]]; then
-            PARENT_DIR="$(params.parentdir)"
+            PARENT_DIR="$(params.parentdir)/$(params.environment)/$(params.app-type)"
           elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
-            PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
+            PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)"/$(params.environment)/$(params.app-type)"
           elif [[ -n "${GIT_PARENT_DIR}" ]]; then
-            PARENT_DIR="${GIT_PARENT_DIR}"
+            PARENT_DIR="${GIT_PARENT_DIR}/$(params.environment)/$(params.app-type)"
           else
             PARENT_DIR="."
           fi
