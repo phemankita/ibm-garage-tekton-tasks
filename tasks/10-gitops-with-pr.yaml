@@ -79,7 +79,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: gitops-repo
-              key: parentdir-services
+              key: parentdir
               optional: true
         - name: GIT_PROTOCOL
           valueFrom:
@@ -121,11 +121,11 @@ spec:
             SUBDIR="${APP_NAME}"
           fi
           if [[ -n "$(params.parentdir)" ]]; then
-            PARENT_DIR="$(params.parentdir)/$(params.environment)/$(params.app-type)"
+            PARENT_DIR="$(params.parentdir)/$(params.app-type)$(params.environment)"
           elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
-            PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)"/$(params.environment)/$(params.app-type)"
+            PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)"/$(params.app-type)/$(params.environment)"
           elif [[ -n "${GIT_PARENT_DIR}" ]]; then
-            PARENT_DIR="${GIT_PARENT_DIR}/$(params.environment)/$(params.app-type)"
+            PARENT_DIR="${GIT_PARENT_DIR}/$(params.app-type)/$(params.environment)"
           else
             PARENT_DIR="."
           fi
