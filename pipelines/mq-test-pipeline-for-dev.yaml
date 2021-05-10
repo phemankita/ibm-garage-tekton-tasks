@@ -1,0 +1,120 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ibm-mq-test-in-dev-env
+  annotations:
+    app.openshift.io/runtime: mq
+spec:
+  params:
+    - name: qm-git-url
+      description: The url for the queuemanager git repository
+    - name: qm-git-revision
+      description: The git revision (branch, tag, or sha) that should be built
+      default: master
+    - name: argoQMName
+      description: Name of the application deployed by argocd in dev namespace
+      default: "ibm-mq-dev-instance"
+    - name: app-git-url
+      description: The url for the queuemanager git repository
+    - name: app-git-revision
+      description: The git revision (branch, tag, or sha) that should be built
+      default: master
+    - name: argoAppName
+      description: Name of the application deployed by argocd in dev namespace
+      default: "mq-quarkus-app-dev"
+  tasks:
+    - name: setup-queuemanager
+      taskRef:
+        name: ibm-setup
+      params:
+        - name: git-url
+          value: $(params.qm-git-url)
+        - name: git-revision
+          value: $(params.qm-git-revision)
+    - name: img-info-for-queuemanager
+      taskRef:
+        name: ibm-img-info-extract
+      runAfter:
+        - setup-queuemanager
+      params:
+        - name: git-url
+          value: "$(tasks.setup-queuemanager.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup-queuemanager.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup-queuemanager.results.source-dir)"
+        - name: image-from
+          value: "$(tasks.setup-queuemanager.results.image-url)"
+        - name: image-to
+          value: "$(tasks.setup-queuemanager.results.image-release)"
+    - name: queuemanager-instance-tests
+      taskRef:
+        name: ibm-argo-tests
+      runAfter:
+        - img-info-for-queuemanager
+      params:
+        - name: image-url
+          value: "$(tasks.img-info-for-queuemanager.results.image-url)"
+        - name: argoAppName
+          value: "$(params.argoQMName)"
+    # - name: setup-app
+    #   taskRef:
+    #     name: ibm-setup-v2-5-0
+    #   runAfter:
+    #     - queuemanager-instance-tests
+    #   params:
+    #     - name: git-url
+    #       value: $(params.app-git-url)
+    #     - name: git-revision
+    #       value: $(params.app-git-revision)
+    # - name: img-info-for-app
+    #   taskRef:
+    #     name: ibm-img-info-extract
+    #   runAfter:
+    #     - setup-app
+    #   params:
+    #     - name: git-url
+    #       value: "$(tasks.setup-app.results.git-url)"
+    #     - name: git-revision
+    #       value: "$(tasks.setup-app.results.git-revision)"
+    #     - name: source-dir
+    #       value: "$(tasks.setup-app.results.source-dir)"
+    #     - name: image-from
+    #       value: "$(tasks.setup-app.results.image-url)"
+    #     - name: image-to
+    #       value: "$(tasks.setup-app.results.image-release)"
+    # - name: app-instance-tests
+    #   taskRef:
+    #     name: ibm-argo-tests
+    #   runAfter:
+    #     - img-info-for-app
+    #   params:
+    #     - name: image-url
+    #       value: "$(tasks.img-info-for-app.results.image-url)"
+    #     - name: argoAppName
+    #       value: "$(params.argoAppName)"
+    # Add a task to perform some performance / end to end testing in dev environment
+    - name: promote-changes-to-queuemanager
+      taskRef:
+        name: ibm-update-image
+      runAfter:
+        - queuemanager-instance-tests
+      params:
+        - name: git-url
+          value: "$(tasks.setup-queuemanager.results.git-url)"
+        - name: git-branch
+          value: "$(params.qm-git-revision)"
+        - name: image-url
+          value: "$(tasks.queuemanager-instance-tests.results.image-url)"
+    # - name: promote-changes-to-app
+    #   taskRef:
+    #     name: ibm-update-image
+    #   runAfter:
+    #     - promote-changes-to-queuemanager
+    #   params:
+    #     - name: git-url
+    #       value: "$(tasks.setup-app.results.git-url)"
+    #     - name: git-branch
+    #       value: "$(params.app-git-revision)"
+    #     - name: image-url
+    #       value: "$(tasks.app-instance-tests.results.image-url)"
